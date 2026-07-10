@@ -27,16 +27,12 @@ export default function VoiceWidget() {
     if (!result.command) {
       addLogEntry(result.description, 'fail');
       useRobotStore.getState().addLog({
-        source: 'voice',
-        kind: 'parse',
-        result: 'REJECT',
-        reason: result.description,
-        timestamp: Date.now(),
+        source: 'voice', kind: 'parse', result: 'REJECT',
+        reason: result.description, timestamp: Date.now(),
       });
       return;
     }
 
-    // PIN entry uses its own controller
     if (result.command.kind === 'enterPin') {
       addLogEntry(`✓ ${result.description}`, 'success');
       startPin(result.command.pin);
@@ -44,7 +40,6 @@ export default function VoiceWidget() {
     }
 
     const report = execute(result.command, 'voice');
-
     if (report.success) {
       addLogEntry(`✓ ${result.description}`, 'success');
     } else {
@@ -58,73 +53,24 @@ export default function VoiceWidget() {
   }, [voice, handleTranscript]);
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 170,
-      right: 12,
-      zIndex: 10,
-      width: 260,
-      background: 'rgba(10, 11, 13, 0.92)',
-      backdropFilter: 'blur(8px)',
-      border: `1px solid ${voice.listening ? 'rgba(196, 248, 42, 0.3)' : 'rgba(196, 248, 42, 0.15)'}`,
-      borderRadius: 8,
-      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-      fontSize: 11,
-      color: '#c8cad0',
-      overflow: 'hidden',
-      transition: 'border-color 0.2s ease',
-    }}>
-      {/* Header with mic button */}
-      <div style={{
-        padding: '8px 12px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <div>
-          <span style={{
-            color: voice.listening ? '#C4F82A' : '#5B626B',
-            fontWeight: 700,
-            letterSpacing: 1,
-            fontSize: 10,
-            transition: 'color 0.2s ease',
-          }}>
-            {voice.listening ? 'LISTENING' : 'VOICE'}
-          </span>
-          {/* Interim (live partial recognition) */}
-          {voice.interim && (
-            <div style={{
-              color: '#666',
-              fontSize: 9,
-              marginTop: 2,
-              fontStyle: 'italic',
-              maxWidth: 160,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {voice.interim}...
-            </div>
-          )}
-        </div>
-
+    <div className="panel">
+      <div className="panel-header">
+        <span>{voice.listening ? 'LISTENING' : 'VOICE'}</span>
         <button
           onClick={handleToggle}
           disabled={!voice.supported}
-          title={voice.supported ? (voice.listening ? 'Stop listening' : 'Start listening') : 'Not supported — use Chrome'}
+          title={voice.supported ? (voice.listening ? 'Stop' : 'Start') : 'Chrome only'}
           style={{
-            width: 32,
-            height: 32,
+            width: 28, height: 28,
             borderRadius: '50%',
-            border: `2px solid ${voice.listening ? '#C4F82A' : '#3a3f47'}`,
-            background: voice.listening ? 'rgba(196, 248, 42, 0.15)' : '#191C20',
-            color: voice.listening ? '#C4F82A' : '#888',
+            border: `2px solid ${voice.listening ? 'var(--primary)' : 'var(--border)'}`,
+            background: voice.listening ? 'var(--primary-light)' : 'var(--muted)',
+            color: voice.listening ? 'var(--primary)' : 'var(--muted-foreground)',
             cursor: voice.supported ? 'pointer' : 'not-allowed',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 14,
+            fontSize: 13,
             transition: 'all 0.2s ease',
             animation: voice.listening ? 'pulse-ring 1.5s ease-in-out infinite' : 'none',
             opacity: voice.supported ? 1 : 0.4,
@@ -134,58 +80,61 @@ export default function VoiceWidget() {
         </button>
       </div>
 
-      {/* Error */}
-      {voice.error && (
-        <div style={{
-          padding: '4px 12px',
-          fontSize: 9,
-          color: '#FF4438',
-          background: 'rgba(255, 68, 56, 0.08)',
-        }}>
-          {voice.error}
-        </div>
-      )}
+      <div className="panel-body" style={{ paddingTop: 6, paddingBottom: 8 }}>
+        {/* Interim */}
+        {voice.interim && (
+          <div style={{
+            color: 'var(--muted-foreground)',
+            fontSize: 10,
+            fontStyle: 'italic',
+            marginBottom: 4,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {voice.interim}...
+          </div>
+        )}
 
-      {/* Log entries */}
-      {log.length > 0 && (
-        <div style={{ padding: '6px 12px 10px' }}>
-          {log.map((entry, i) => (
-            <div key={entry.timestamp + i} style={{
-              padding: '2px 0',
-              fontSize: 10,
-              color: entry.status === 'success' ? '#C4F82A'
-                : entry.status === 'fail' ? '#FF4438'
-                : '#888',
-              opacity: i < log.length - 1 ? 0.5 : 1,
-              transition: 'opacity 0.3s ease',
-            }}>
-              {entry.status === 'success' ? '✓' : entry.status === 'fail' ? '✗' : '·'} {entry.text}
-            </div>
-          ))}
-        </div>
-      )}
+        {/* Error */}
+        {voice.error && (
+          <div style={{
+            padding: '4px 8px',
+            fontSize: 9,
+            color: 'var(--destructive)',
+            background: 'var(--destructive-light)',
+            borderRadius: 'var(--radius)',
+            marginBottom: 4,
+          }}>
+            {voice.error}
+          </div>
+        )}
 
-      {/* Hint when no log */}
-      {log.length === 0 && !voice.error && (
-        <div style={{
-          padding: '8px 12px',
-          fontSize: 9,
-          color: '#5B626B',
-          lineHeight: 1.5,
-        }}>
-          {voice.supported
-            ? 'Try: "move up", "touch 3", "go home", "rotate base 30 degrees"'
-            : 'Web Speech API not available — use Chrome'
-          }
-        </div>
-      )}
-
-      <style>{`
-        @keyframes pulse-ring {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(196, 248, 42, 0.3); }
-          50% { box-shadow: 0 0 0 6px rgba(196, 248, 42, 0); }
-        }
-      `}</style>
+        {/* Log entries */}
+        {log.length > 0 ? (
+          <div>
+            {log.map((entry, i) => (
+              <div key={entry.timestamp + i} className="font-mono" style={{
+                padding: '2px 0',
+                fontSize: 10,
+                color: entry.status === 'success' ? 'var(--primary)'
+                  : entry.status === 'fail' ? 'var(--destructive)'
+                  : 'var(--muted-foreground)',
+                opacity: i < log.length - 1 ? 0.5 : 1,
+              }}>
+                {entry.status === 'success' ? '✓' : entry.status === 'fail' ? '✗' : '·'} {entry.text}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 9, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+            {voice.supported
+              ? '"move up", "touch 3", "go home", "rotate base 30 degrees"'
+              : 'Web Speech API not available — use Chrome'
+            }
+          </div>
+        )}
+      </div>
     </div>
   );
 }

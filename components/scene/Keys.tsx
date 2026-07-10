@@ -15,7 +15,7 @@ const COLORS: Record<string, string> = {
   '4': '#f1c40f', '5': '#9b59b6', '6': '#e67e22',
 };
 
-const LIME = '#C4F82A';
+const LIME = '#10B981';
 const LIME_COLOR = new Color(LIME);
 
 const CAP_W = 0.038;
@@ -111,7 +111,7 @@ export function Keys() {
       {/* Base plate */}
       <mesh position={[BASE_CX, BASE_CY, BASE_Z]}>
         <boxGeometry args={[BASE_W, BASE_D, BASE_H]} />
-        <meshStandardMaterial color="#1a1a2e" metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color="#D1D5DB" metalness={0.3} roughness={0.5} />
       </mesh>
 
       {/* Key caps with labels */}
@@ -140,11 +140,11 @@ export function Keys() {
               center
               distanceFactor={0.8}
               style={{
-                color: '#fff',
+                color: '#1A1B1E',
                 fontFamily: '"JetBrains Mono", monospace',
                 fontWeight: 800,
                 fontSize: 13,
-                textShadow: `0 0 4px ${color}, 0 0 8px rgba(0,0,0,0.9)`,
+                textShadow: `0 0 3px rgba(255,255,255,0.8)`,
                 userSelect: 'none',
                 pointerEvents: 'none',
                 lineHeight: 1,

@@ -3,21 +3,19 @@
 import { useState, useCallback } from 'react';
 import { useRobotStore } from '@/store/robot';
 import { JOINTS } from '@/lib/robot/constants';
+import StatusLEDs from '@/components/ui/StatusLED';
+import JointBars from '@/components/ui/JointBar';
 
 export default function HUD() {
   const joints = useRobotStore((s) => s.joints);
   const tcp = useRobotStore((s) => s.tcp);
-  const mode = useRobotStore((s) => s.mode);
-  const safetyFlag = useRobotStore((s) => s.safetyFlag);
   const isMoving = useRobotStore((s) => s.isMoving);
   const queueLen = useRobotStore((s) => s.motionQueue.length);
   const setJoints = useRobotStore((s) => s.setJoints);
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [showSliders, setShowSliders] = useState(false);
 
   const handleSlider = useCallback((index: number, value: number) => {
-    // Clear motion queue when user manually drags a slider —
-    // prevents the interpolation loop from fighting the slider.
     const state = useRobotStore.getState();
     if (state.isMoving) {
       state.clearQueue();
@@ -30,115 +28,101 @@ export default function HUD() {
   const toDeg = (rad: number) => (rad * 180 / Math.PI).toFixed(1);
 
   return (
-    <div
-      style={{
+    <>
+      {/* ── TCP + Status overlay (top-left of viewport) ──────── */}
+      <div className="panel" style={{
         position: 'absolute',
         top: 12,
         left: 12,
         zIndex: 10,
-        background: 'rgba(10, 11, 13, 0.85)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(196, 248, 42, 0.15)',
-        borderRadius: 8,
-        padding: collapsed ? '8px 12px' : '12px 16px',
-        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-        fontSize: 11,
-        color: '#c8cad0',
-        minWidth: collapsed ? 'auto' : 220,
-        userSelect: 'none',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-        onClick={() => setCollapsed(!collapsed)}
-      >
-        <span style={{ color: '#C4F82A', fontWeight: 700, letterSpacing: 1 }}>TELEMETRY</span>
-        <span style={{ color: '#666', fontSize: 10 }}>{collapsed ? '▶' : '▼'}</span>
+        padding: '12px 16px',
+        minWidth: 210,
+      }}>
+        <StatusLEDs />
+
+        <div style={{ marginTop: 12 }}>
+          <div className="label-micro" style={{ marginBottom: 4 }}>TCP POSITION</div>
+          <div className="font-mono" style={{
+            display: 'flex', gap: 14,
+            fontSize: 13, fontWeight: 600,
+            color: 'var(--foreground)',
+          }}>
+            <span>X <span style={{ color: '#DC2626' }}>{tcp.x.toFixed(4)}</span></span>
+            <span>Y <span style={{ color: '#2563EB' }}>{tcp.y.toFixed(4)}</span></span>
+            <span>Z <span style={{ color: '#059669' }}>{tcp.z.toFixed(4)}</span></span>
+          </div>
+        </div>
+
+        {isMoving && queueLen > 1 && (
+          <div style={{
+            marginTop: 10, fontSize: 10, color: 'var(--primary)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: 'var(--primary)', display: 'inline-block',
+              animation: 'pulse 1s ease-in-out infinite',
+            }} />
+            MOVING — {queueLen} waypoints
+            <span style={{ color: 'var(--muted-foreground)', marginLeft: 8, fontSize: 9 }}>ESC to stop</span>
+          </div>
+        )}
       </div>
 
-      {!collapsed && (
-        <>
-          {/* Mode + Safety + Motion */}
-          <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <span>MODE: <span style={{ color: '#C4F82A' }}>{mode.toUpperCase()}</span></span>
-            <span>GATE: <span style={{ color: safetyFlag ? '#2ecc71' : '#666' }}>
-              {safetyFlag ? 'ACTIVE' : 'IDLE'}
-            </span></span>
-          </div>
+      {/* ── Joint panel (bottom-left of viewport) ──────── */}
+      <div className="panel" style={{
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        zIndex: 10,
+        width: 240,
+        overflow: 'hidden',
+      }}>
+        <div
+          onClick={() => setShowSliders(!showSliders)}
+          className="panel-header"
+          style={{ cursor: 'pointer' }}
+        >
+          <span>JOINTS</span>
+          <span style={{ color: 'var(--muted-foreground)', fontSize: 9, fontWeight: 400 }}>
+            {showSliders ? '▼ SLIDERS' : '▶ BARS'}
+          </span>
+        </div>
 
-          {/* Motion queue status — only show for multi-waypoint moves, not jogs */}
-          {isMoving && queueLen > 1 && (
-            <div style={{
-              marginTop: 6,
-              padding: '4px 8px',
-              background: 'rgba(196, 248, 42, 0.08)',
-              borderRadius: 4,
-              fontSize: 10,
-              color: '#C4F82A',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}>
-              <span style={{
-                display: 'inline-block',
-                width: 6, height: 6,
-                borderRadius: '50%',
-                background: '#C4F82A',
-                animation: 'pulse 1s ease-in-out infinite',
-              }} />
-              MOVING — {queueLen} waypoint{queueLen !== 1 ? 's' : ''} queued
-              <span style={{ color: '#888', marginLeft: 'auto' }}>ESC to stop</span>
+        <div className="panel-body">
+          {showSliders ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {JOINTS.map((jDef, i) => (
+                <div key={jDef.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="font-mono" style={{
+                    width: 22, textAlign: 'right',
+                    color: 'var(--muted-foreground)', fontSize: 10,
+                  }}>
+                    J{i + 1}
+                  </span>
+                  <input
+                    type="range"
+                    min={jDef.lower}
+                    max={jDef.upper}
+                    step={0.01}
+                    value={joints[i]}
+                    onChange={(e) => handleSlider(i, parseFloat(e.target.value))}
+                    style={{ flex: 1, height: 3, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  />
+                  <span className="font-mono" style={{
+                    width: 48, textAlign: 'right', fontSize: 10,
+                    color: 'var(--foreground)',
+                  }}>
+                    {toDeg(joints[i])}°
+                  </span>
+                </div>
+              ))}
             </div>
+          ) : (
+            <JointBars />
           )}
-
-          {/* TCP Position */}
-          <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
-            <div style={{ color: '#888', marginBottom: 4 }}>TCP POSITION (m)</div>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <span>X: <span style={{ color: '#e74c3c' }}>{tcp.x.toFixed(4)}</span></span>
-              <span>Y: <span style={{ color: '#3498db' }}>{tcp.y.toFixed(4)}</span></span>
-              <span>Z: <span style={{ color: '#2ecc71' }}>{tcp.z.toFixed(4)}</span></span>
-            </div>
-          </div>
-
-          {/* Joint Sliders */}
-          <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
-            <div style={{ color: '#888', marginBottom: 6 }}>JOINT ANGLES</div>
-            {JOINTS.map((jDef, i) => (
-              <div key={jDef.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <span style={{ width: 20, textAlign: 'right', color: '#666' }}>J{i + 1}</span>
-                <input
-                  type="range"
-                  min={jDef.lower}
-                  max={jDef.upper}
-                  step={0.01}
-                  value={joints[i]}
-                  onChange={(e) => handleSlider(i, parseFloat(e.target.value))}
-                  style={{
-                    flex: 1,
-                    height: 3,
-                    accentColor: '#C4F82A',
-                    cursor: 'pointer',
-                  }}
-                />
-                <span style={{ width: 50, textAlign: 'right', fontSize: 10, color: '#aaa' }}>
-                  {toDeg(joints[i])}°
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Pulse animation for moving indicator */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
-    </div>
+        </div>
+      </div>
+    </>
   );
 }

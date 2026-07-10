@@ -18,10 +18,15 @@ export function useVoice() {
   const [transcript, setTranscript] = useState('');
   const [interim, setInterim] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [supported] = useState(() =>
-    typeof window !== 'undefined' &&
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
-  );
+  const [supported, setSupported] = useState(false);
+
+  // Detect speech support after mount to avoid hydration mismatch
+  useEffect(() => {
+    setSupported(
+      typeof window !== 'undefined' &&
+      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    );
+  }, []);
 
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);

@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
+/* ── Greenlight Design Tokens ─────────────────────────────────────
+   Light-mode industrial control dashboard.
+   3D viewport stays dark; UI panels are clean white/grey.
+   ────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.375rem;
+
+  /* Surface */
+  --background: #F4F5F7;
+  --foreground: #1A1B1E;
+  --card: #FFFFFF;
+  --card-foreground: #1A1B1E;
+
+  /* Muted / secondary */
+  --muted: #F0F1F3;
+  --muted-foreground: #6B7280;
+  --border: #E2E4E9;
+  --border-subtle: #EDEEF1;
+
+  /* Accent — emerald/green, reads on white */
+  --primary: #10B981;
+  --primary-light: #D1FAE5;
+  --primary-foreground: #FFFFFF;
+
+  /* Danger — faults, rejects */
+  --destructive: #EF4444;
+  --destructive-light: #FEE2E2;
+  --destructive-foreground: #FFFFFF;
+
+  /* Warning — near joint limits */
+  --warn: #F59E0B;
+  --warn-light: #FEF3C7;
+
+  /* Viewport */
+  --viewport-bg: #F4F5F7;
+
+  /* Focus ring */
+  --ring: #10B981;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ──────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-space-grotesk, 'Space Grotesk', system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* ── Typography utilities ─────────────────────────────────────── */
+
+/* Monospace numbers that don't jitter */
+.font-mono {
+  font-family: var(--font-jetbrains-mono, 'JetBrains Mono', 'Fira Code', monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Instrument micro-labels */
+.label-micro {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* ── Panel card ────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-body {
+  padding: 10px 14px;
+}
+
+/* ── Scrollbar (thin, subtle) ─────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
