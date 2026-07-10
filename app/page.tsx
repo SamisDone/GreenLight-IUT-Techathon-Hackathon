@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import HUD from '@/components/scene/HUD';
 import KeyboardHandler from '@/components/controls/KeyboardHandler';
 import CommandConsole from '@/components/telemetry/CommandConsole';
+import PinEntry from '@/components/controls/PinEntry';
 
 // Three.js / R3F must be client-only — ssr: false prevents window crashes
 const SceneCanvas = dynamic(() => import('@/components/scene/Canvas'), { ssr: false });
@@ -14,6 +15,7 @@ export default function Home() {
       <SceneCanvas />
       <HUD />
       <CommandConsole />
+      <PinEntry />
       <KeyboardHandler />
     </div>
   );
