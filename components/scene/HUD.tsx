@@ -68,8 +68,8 @@ export default function HUD() {
             </span></span>
           </div>
 
-          {/* Motion queue status */}
-          {isMoving && (
+          {/* Motion queue status — only show for multi-waypoint moves, not jogs */}
+          {isMoving && queueLen > 1 && (
             <div style={{
               marginTop: 6,
               padding: '4px 8px',
