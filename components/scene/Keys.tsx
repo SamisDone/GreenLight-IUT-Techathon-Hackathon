@@ -5,7 +5,8 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { KEYS } from '@/lib/robot/constants';
 import { useRobotStore } from '@/store/robot';
-import type { Mesh } from 'three';
+import type { Mesh, MeshStandardMaterial } from 'three';
+import { Color } from 'three';
 
 // ── Layout ──────────────────────────────────────────────────────────
 
@@ -13,6 +14,9 @@ const COLORS: Record<string, string> = {
   '1': '#e74c3c', '2': '#3498db', '3': '#2ecc71',
   '4': '#f1c40f', '5': '#9b59b6', '6': '#e67e22',
 };
+
+const LIME = '#C4F82A';
+const LIME_COLOR = new Color(LIME);
 
 const CAP_W = 0.038;
 const CAP_D = 0.038;
@@ -32,21 +36,31 @@ const BASE_D = Math.max(...ys) - Math.min(...ys) + CAP_D + PAD * 2;
 const BASE_H = 0.008;
 const BASE_Z = 0.050 - BASE_H / 2;
 
+// Pre-compute Color objects for each key
+const KEY_COLORS: Record<string, Color> = {};
+for (const id of Object.keys(COLORS)) {
+  KEY_COLORS[id] = new Color(COLORS[id]);
+}
+
 // ── Full Key Panel (single useFrame for all keys) ───────────────────
 
 export function Keys() {
   const keyEntries = useMemo(() => Object.entries(KEYS), []);
   const keyRefs = useRef<(Mesh | null)[]>(new Array(keyEntries.length).fill(null));
   const pressOffsets = useRef<number[]>(new Array(keyEntries.length).fill(0));
+  const flashTimers = useRef<number[]>(new Array(keyEntries.length).fill(0));
 
-  // Single useFrame drives all key press animations
+  // Single useFrame drives all key press animations + highlight + flash
   useFrame((_, delta) => {
-    const { tcp } = useRobotStore.getState();
+    const { tcp, pinState } = useRobotStore.getState();
     const speed = 25;
+    const activeKeyId = pinState?.activeKeyId ?? null;
 
-    keyEntries.forEach(([, pos], i) => {
+    keyEntries.forEach(([id, pos], i) => {
       const mesh = keyRefs.current[i];
       if (!mesh) return;
+
+      const mat = mesh.material as MeshStandardMaterial;
 
       // Distance from TCP to key center
       const dx = tcp.x - pos.x;
@@ -57,8 +71,38 @@ export function Keys() {
       // Spring toward press/release
       const target = dist < PRESS_THRESHOLD ? -PRESS_DEPTH : 0;
       pressOffsets.current[i] += (target - pressOffsets.current[i]) * Math.min(speed * delta, 1);
-
       mesh.position.z = pos.z + CAP_H / 2 + pressOffsets.current[i];
+
+      // Flash on contact: trigger when TCP enters threshold during PIN
+      if (dist < PRESS_THRESHOLD && activeKeyId === id) {
+        flashTimers.current[i] = 0.3;  // 300ms flash
+      }
+      if (flashTimers.current[i] > 0) {
+        flashTimers.current[i] -= delta;
+      }
+
+      // Color logic: active key during PIN → lime, flash → white burst, else normal
+      const baseColor = KEY_COLORS[id] ?? new Color('#ffffff');
+      const isActive = activeKeyId === id;
+      const isFlashing = flashTimers.current[i] > 0;
+
+      if (isFlashing) {
+        // White flash that fades back
+        const flashIntensity = Math.min(flashTimers.current[i] / 0.15, 1);
+        mat.color.set('#ffffff');
+        mat.emissive.set('#ffffff');
+        mat.emissiveIntensity = 1.0 * flashIntensity;
+      } else if (isActive) {
+        // Lime highlight for active key
+        mat.color.copy(LIME_COLOR);
+        mat.emissive.copy(LIME_COLOR);
+        mat.emissiveIntensity = 0.8;
+      } else {
+        // Normal color
+        mat.color.copy(baseColor);
+        mat.emissive.copy(baseColor);
+        mat.emissiveIntensity = 0.4;
+      }
     });
   });
 
