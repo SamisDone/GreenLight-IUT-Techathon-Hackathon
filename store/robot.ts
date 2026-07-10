@@ -12,25 +12,48 @@ export type LogEntry = {
   timestamp: number;
 };
 
+export type PinDigitResult = {
+  digit: string;
+  keyId: string;
+  errorMm: number;
+  pass: boolean;
+};
+
+export type PinState = {
+  active: boolean;
+  pin: string;
+  currentDigitIndex: number;
+  activeKeyId: string | null;
+  results: PinDigitResult[];
+  phase: 'running' | 'complete' | 'failed';
+  failReason?: string;
+};
+
 interface RobotState {
-  joints: number[];             // length 7, current visual position
-  tcp: Vec3;                    // computed from FK
+  joints: number[];
+  tcp: Vec3;
   mode: Mode;
   safetyFlag: boolean;
   logs: LogEntry[];
-  motionQueue: number[][];      // FIFO of validated joint targets
-  isMoving: boolean;            // true while interpolating toward a target
+  motionQueue: number[][];
+  isMoving: boolean;
+  pinState: PinState | null;
 
-  // Instant — for sliders/debug
+  // Joint / motion
   setJoints: (j: number[]) => void;
   setMode: (m: Mode) => void;
   addLog: (entry: LogEntry) => void;
 
-  // Motion queue — for pipeline (smooth interpolation)
+  // Motion queue
   enqueueMotion: (joints: number[]) => void;
-  completeMotion: () => void;   // shift front off the queue
+  completeMotion: () => void;
   setIsMoving: (v: boolean) => void;
   clearQueue: () => void;
+
+  // PIN
+  setPinState: (ps: PinState | null) => void;
+  updatePinState: (patch: Partial<PinState>) => void;
+  addPinResult: (result: PinDigitResult) => void;
 }
 
 const HOME = [0, 0, 0, 0, 0, 0, 0];
@@ -44,6 +67,7 @@ export const useRobotStore = create<RobotState>((set) => ({
   logs: [],
   motionQueue: [],
   isMoving: false,
+  pinState: null,
 
   setJoints: (j) => set({ joints: [...j], tcp: fk(j).tcp }),
   setMode: (m) => set({ mode: m }),
@@ -62,4 +86,15 @@ export const useRobotStore = create<RobotState>((set) => ({
   setIsMoving: (v) => set({ isMoving: v }),
 
   clearQueue: () => set({ motionQueue: [], isMoving: false }),
+
+  // PIN state
+  setPinState: (ps) => set({ pinState: ps }),
+  updatePinState: (patch) => set((s) => ({
+    pinState: s.pinState ? { ...s.pinState, ...patch } : null,
+  })),
+  addPinResult: (result) => set((s) => ({
+    pinState: s.pinState
+      ? { ...s.pinState, results: [...s.pinState.results, result] }
+      : null,
+  })),
 }));
