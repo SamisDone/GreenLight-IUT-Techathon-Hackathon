@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://green-light-iut-techathon-hackathon.vercel.app/sitemap.xml
+Sitemap: https://greenlight-ptsd.vercel.app/sitemap.xml

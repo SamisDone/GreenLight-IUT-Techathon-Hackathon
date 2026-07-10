@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL = 'https://green-light-iut-techathon-hackathon.vercel.app';
+const SITE_URL = 'https://greenlight-ptsd.vercel.app';
 
 export const metadata: Metadata = {
   title: 'Greenlight — Vantage Arm Control Suite',

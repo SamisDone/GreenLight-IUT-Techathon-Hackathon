@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://green-light-iut-techathon-hackathon.vercel.app/"><img src="https://img.shields.io/badge/▶_Live_Demo-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"/></a>
+  <a href="https://greenlight-ptsd.vercel.app/"><img src="https://img.shields.io/badge/▶_Live_Demo-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"/></a>
   &nbsp;
   <a href="https://wokwi.com/projects/469142896149008385"><img src="https://img.shields.io/badge/⚡_Wokwi_Simulation-4B0082?style=for-the-badge&logo=arduino&logoColor=white" alt="Wokwi Simulation"/></a>
 </p>
