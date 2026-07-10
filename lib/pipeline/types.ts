@@ -11,12 +11,10 @@ export type MotionCommand =
   | { kind: 'enterPin'; pin: string }                             // compiles to touchKey[]
   | { kind: 'home' };
 
-// Compiled, low-level, gate-checkable
-export type PoseWaypoint = {
-  target: Vec3;
-  keepVertical: boolean;
-  label?: string;      // for the console log, e.g. "above key 5", "descend"
-};
+// Compiled, low-level, gate-checkable — discriminated union
+export type PoseWaypoint =
+  | { kind: 'cartesian'; target: Vec3; keepVertical: boolean; label?: string }
+  | { kind: 'joint';     joints: number[];                   label?: string };
 
 export type GateResult =
   | { ok: true; jointSolution: number[] }
