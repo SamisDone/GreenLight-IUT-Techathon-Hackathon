@@ -9,7 +9,7 @@ import type { PoseWaypoint, GateResult } from '../pipeline/types';
 
 export function validate(waypoint: PoseWaypoint, currentJoints?: number[]): GateResult {
   if (waypoint.kind === 'cartesian') {
-    return validateCartesian(waypoint.target, currentJoints);
+    return validateCartesian(waypoint.target, currentJoints, waypoint.keepVertical);
   }
   return validateJoint(waypoint.joints);
 }
@@ -19,6 +19,7 @@ export function validate(waypoint: PoseWaypoint, currentJoints?: number[]): Gate
 function validateCartesian(
   t: { x: number; y: number; z: number },
   currentJoints?: number[],
+  keepVertical = false,
 ): GateResult {
   // 1. Distance from shoulder to target
   const dx = t.x;
@@ -40,7 +41,7 @@ function validateCartesian(
   }
 
   // 3. IK
-  const solution = solve(t, currentJoints);
+  const solution = solve(t, currentJoints, keepVertical);
   if (!solution) {
     return { ok: false, reason: 'IK did not converge', code: 'UNREACHABLE' };
   }
