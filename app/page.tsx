@@ -5,6 +5,7 @@ import HUD from '@/components/scene/HUD';
 import KeyboardHandler from '@/components/controls/KeyboardHandler';
 import CommandConsole from '@/components/telemetry/CommandConsole';
 import PinEntry from '@/components/controls/PinEntry';
+import Joystick from '@/components/controls/Joystick';
 
 // Three.js / R3F must be client-only — ssr: false prevents window crashes
 const SceneCanvas = dynamic(() => import('@/components/scene/Canvas'), { ssr: false });
@@ -16,6 +17,7 @@ export default function Home() {
       <HUD />
       <CommandConsole />
       <PinEntry />
+      <Joystick />
       <KeyboardHandler />
     </div>
   );
