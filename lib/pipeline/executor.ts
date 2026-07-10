@@ -7,12 +7,17 @@ export function execute(cmd: MotionCommand, source: string = 'keyboard'): ExecRe
   const state = useRobotStore.getState();
   const { enqueueMotion, addLog } = state;
 
-  // If the arm is mid-motion, plan from the final queued position,
-  // not the current (mid-interpolation) joints. This prevents jog
-  // from computing targets based on a mid-flight snapshot.
-  const joints = state.motionQueue.length > 0
-    ? state.motionQueue[state.motionQueue.length - 1]
-    : state.joints;
+  // Jogs are immediate — clear any queued motion and plan from the
+  // current (mid-interpolation) joints so the joystick feels responsive.
+  if (cmd.kind === 'jog') {
+    state.clearQueue();
+  }
+
+  // For jog: plan from current joints (just cleared the queue).
+  // For everything else: plan from the last queued target if mid-motion.
+  const joints = (cmd.kind === 'jog' || state.motionQueue.length === 0)
+    ? state.joints
+    : state.motionQueue[state.motionQueue.length - 1];
 
   const waypoints = plan(cmd, joints);
 
