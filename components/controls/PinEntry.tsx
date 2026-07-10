@@ -77,7 +77,7 @@ export default function PinEntry() {
           placeholder="e.g. 145236"
           maxLength={12}
           value={input}
-          onChange={(e) => setInput(e.target.value.replace(/[^1-6]/g, ''))}
+          onChange={(e) => setInput(e.target.value.replace(/[^0-9]/g, ''))}
           onKeyDown={handleKeyDown}
           disabled={isRunning}
           style={{

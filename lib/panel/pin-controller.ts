@@ -25,12 +25,20 @@ export function startPin(pin: string): void {
   const digits = pin.split('');
   for (let i = 0; i < digits.length; i++) {
     if (!KEYS[digits[i]]) {
+      // Record results for valid digits before the invalid one
+      const results: PinDigitResult[] = [];
+      for (let j = 0; j < i; j++) {
+        results.push({ digit: digits[j], keyId: digits[j], errorMm: 0, pass: true });
+      }
+      // Add FAIL result for the invalid digit
+      results.push({ digit: digits[i], keyId: digits[i], errorMm: 999, pass: false });
+
       store.setPinState({
         active: false,
         pin,
         currentDigitIndex: i,
         activeKeyId: null,
-        results: [],
+        results,
         phase: 'failed',
         failReason: `No key for digit "${digits[i]}" (position ${i + 1})`,
       });
