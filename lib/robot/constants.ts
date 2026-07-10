@@ -1,4 +1,4 @@
-// All values from 6_dof_arm.urdf and key_config.json. Base frame, meters, radians.
+// All values from stylus_arm.urdf and key_config.json. Base frame, meters, radians.
 
 export const JOINTS = [
   { name: 'joint_1',      axis: 'z', lower: -3.1416, upper: 3.1416, vel: 2.5, offset: [0, 0, 0.060] },
