@@ -20,6 +20,10 @@
 </p>
 
 <p align="center">
+  <a href="https://green-light-iut-techathon-hackathon.vercel.app/"><img src="https://img.shields.io/badge/▶_Live_Demo-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"/></a>
+</p>
+
+<p align="center">
   <code>6 input methods</code> · <code>1 shared pipeline</code> · <code>0 ungated paths</code>
 </p>
 
