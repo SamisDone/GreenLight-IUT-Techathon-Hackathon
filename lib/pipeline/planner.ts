@@ -18,7 +18,15 @@ export function plan(cmd: MotionCommand, currentJoints: number[]): PoseWaypoint[
     case 'touchKey': {
       const key = KEYS[cmd.keyId];
       if (!key) return [];
+
+      // Prepare: tilt arm forward 60° (split across J2/J3/J5) while flipping
+      // stylus down. J7 can't reach π alone (limit ±120°), so we distribute.
+      const j1 = Math.atan2(key.y, key.x);
+      const TILT = 0.35;                          // ~20° per pitch joint
+      const j7 = Math.PI - 3 * TILT;              // ≈2.09 rad, within ±2.0944 limit
+
       return [
+        { kind: 'joint', joints: [j1, TILT, TILT, 0, TILT, 0, j7],           label: `prepare key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: 0.40 },       keepVertical: true, label: `pre-approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `touch key-${cmd.keyId}` },
