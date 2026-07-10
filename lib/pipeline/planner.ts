@@ -62,9 +62,10 @@ export function plan(cmd: MotionCommand, currentJoints: number[]): PoseWaypoint[
     }
 
     case 'rotateJoint': {
+      const idx = cmd.joint - 1; // cmd.joint is 1-based, array is 0-based
       const newJoints = [...currentJoints];
-      newJoints[cmd.joint] += cmd.deltaDeg * Math.PI / 180;
-      return [{ kind: 'joint', joints: newJoints, label: `rotate joint ${cmd.joint} by ${cmd.deltaDeg}°` }];
+      newJoints[idx] += cmd.deltaDeg * Math.PI / 180;
+      return [{ kind: 'joint', joints: newJoints, label: `rotate J${cmd.joint} by ${cmd.deltaDeg}°` }];
     }
   }
 }

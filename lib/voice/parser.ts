@@ -120,7 +120,7 @@ export function parseVoiceCommand(transcript: string): ParseResult {
       const negWord = /\b(left|counter|ccw)\b/.test(raw);
       const sign = (num.negative || negWord) ? -1 : 1;
       return {
-        command: { kind: 'rotateJoint', joint: 0, deltaDeg: sign * num.value },
+        command: { kind: 'rotateJoint', joint: 1, deltaDeg: sign * num.value },
         description: `rotate base ${sign * num.value}°`,
       };
     }

@@ -10,8 +10,10 @@
     "shadd": "bunx --bun shadcn@latest add"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.11",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "ai": "^7.0.19",
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
