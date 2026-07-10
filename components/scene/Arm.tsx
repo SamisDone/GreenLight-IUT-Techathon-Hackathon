@@ -31,16 +31,22 @@ function useURDFLoader(url: string): URDFRobot | null {
   return robot;
 }
 
-// Joint arrival threshold (rad)
-const ARRIVAL_EPS = 0.001;
+// Hermite smoothstep: ease-in-ease-out, zero velocity at start/end
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
 
-// ── Component: URDF arm with velocity-limited joint interpolation ──
+// ── Component: URDF arm with smooth motion ──
 export function Arm() {
   const robot = useURDFLoader('/arm.urdf');
   const robotContainerRef = useRef<Group>(null);
 
-  // Add robot to its own container — NOT the parent group.
-  // This avoids clear() destroying React children like <Keys />.
+  // Motion state — kept in refs to avoid re-renders
+  const motionStartRef = useRef<number[] | null>(null);  // joints at motion start
+  const motionElapsedRef = useRef(0);
+  const motionDurationRef = useRef(0);
+
+  // Add robot to its own container
   useEffect(() => {
     if (!robot || !robotContainerRef.current) return;
     const container = robotContainerRef.current;
@@ -48,33 +54,50 @@ export function Arm() {
     return () => { container.remove(robot); };
   }, [robot]);
 
-  // ── Main animation loop: velocity-limited interpolation ──
+  // ── Main animation loop ──
   useFrame((_, delta) => {
     if (!robot) return;
 
     const state = useRobotStore.getState();
     const { joints, motionQueue, isMoving } = state;
 
-    // If there's a target in the queue, interpolate toward it
     if (isMoving && motionQueue.length > 0) {
       const target = motionQueue[0];
-      const next = [...joints];
-      let allArrived = true;
 
-      for (let i = 0; i < 7; i++) {
-        const diff = target[i] - joints[i];
-        if (Math.abs(diff) < ARRIVAL_EPS) {
-          next[i] = target[i];
-        } else {
-          allArrived = false;
-          const maxStep = JOINTS[i].vel * delta;
-          next[i] = joints[i] + Math.sign(diff) * Math.min(maxStep, Math.abs(diff));
+      // Initialize motion segment if this is a new target
+      if (!motionStartRef.current) {
+        motionStartRef.current = [...joints];
+        motionElapsedRef.current = 0;
+
+        // Duration = slowest joint (largest |delta| / velocity)
+        let maxTime = 0;
+        for (let i = 0; i < 7; i++) {
+          const travel = Math.abs(target[i] - joints[i]);
+          if (travel > 0.001) {
+            maxTime = Math.max(maxTime, travel / JOINTS[i].vel);
+          }
         }
+        // Minimum duration to prevent instant snaps on tiny moves
+        motionDurationRef.current = Math.max(maxTime, 0.05);
+      }
+
+      // Advance time
+      motionElapsedRef.current += delta;
+      const rawT = Math.min(motionElapsedRef.current / motionDurationRef.current, 1);
+      const t = smoothstep(rawT);
+
+      // Interpolate all joints along the smoothstep curve
+      const start = motionStartRef.current;
+      const next = new Array(7);
+      for (let i = 0; i < 7; i++) {
+        next[i] = start[i] + (target[i] - start[i]) * t;
       }
 
       state.setJoints(next);
 
-      if (allArrived) {
+      // Motion segment complete
+      if (rawT >= 1) {
+        motionStartRef.current = null;
         state.completeMotion();
       }
     }
@@ -91,9 +114,7 @@ export function Arm() {
 
   return (
     <group rotation={[-Math.PI / 2, 0, 0]}>
-      {/* Robot goes here imperatively — isolated from React children */}
       <group ref={robotContainerRef} />
-      {/* Keys are React children — never destroyed by imperative adds */}
       <Keys />
     </group>
   );
