@@ -1,0 +1,16 @@
+{
+  "name": "Greenlight — Vantage Arm Control Suite",
+  "short_name": "Greenlight",
+  "description": "Browser-based 7-DOF robotic arm simulator with IK, safety gating, voice control, autonomous PIN entry, and agentic AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#10B981",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
