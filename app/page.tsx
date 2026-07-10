@@ -6,6 +6,7 @@ import KeyboardHandler from '@/components/controls/KeyboardHandler';
 import CommandConsole from '@/components/telemetry/CommandConsole';
 import PinEntry from '@/components/controls/PinEntry';
 import Joystick from '@/components/controls/Joystick';
+import VoiceWidget from '@/components/controls/VoiceWidget';
 
 // Three.js / R3F must be client-only — ssr: false prevents window crashes
 const SceneCanvas = dynamic(() => import('@/components/scene/Canvas'), { ssr: false });
@@ -18,6 +19,7 @@ export default function Home() {
       <CommandConsole />
       <PinEntry />
       <Joystick />
+      <VoiceWidget />
       <KeyboardHandler />
     </div>
   );
