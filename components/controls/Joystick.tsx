@@ -6,8 +6,8 @@ import { execute } from '@/lib/pipeline/executor';
 const PAD_SIZE = 120;
 const KNOB_SIZE = 40;
 const DEADZONE = 0.1;
-const JOG_STEP = 0.008;       // meters per tick
-const JOG_Z_STEP = 0.006;
+const JOG_STEP = 0.028;       // meters per tick
+const JOG_Z_STEP = 0.024;
 const TICK_MS = 80;            // ~12Hz continuous jog
 
 export default function Joystick() {
