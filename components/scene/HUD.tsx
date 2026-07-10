@@ -9,12 +9,20 @@ export default function HUD() {
   const tcp = useRobotStore((s) => s.tcp);
   const mode = useRobotStore((s) => s.mode);
   const safetyFlag = useRobotStore((s) => s.safetyFlag);
+  const isMoving = useRobotStore((s) => s.isMoving);
+  const queueLen = useRobotStore((s) => s.motionQueue.length);
   const setJoints = useRobotStore((s) => s.setJoints);
 
   const [collapsed, setCollapsed] = useState(false);
 
   const handleSlider = useCallback((index: number, value: number) => {
-    const next = [...useRobotStore.getState().joints];
+    // Clear motion queue when user manually drags a slider —
+    // prevents the interpolation loop from fighting the slider.
+    const state = useRobotStore.getState();
+    if (state.isMoving) {
+      state.clearQueue();
+    }
+    const next = [...state.joints];
     next[index] = value;
     setJoints(next);
   }, [setJoints]);
@@ -52,13 +60,38 @@ export default function HUD() {
 
       {!collapsed && (
         <>
-          {/* Mode + Safety */}
-          <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
+          {/* Mode + Safety + Motion */}
+          <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <span>MODE: <span style={{ color: '#C4F82A' }}>{mode.toUpperCase()}</span></span>
             <span>GATE: <span style={{ color: safetyFlag ? '#2ecc71' : '#666' }}>
               {safetyFlag ? 'ACTIVE' : 'IDLE'}
             </span></span>
           </div>
+
+          {/* Motion queue status */}
+          {isMoving && (
+            <div style={{
+              marginTop: 6,
+              padding: '4px 8px',
+              background: 'rgba(196, 248, 42, 0.08)',
+              borderRadius: 4,
+              fontSize: 10,
+              color: '#C4F82A',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <span style={{
+                display: 'inline-block',
+                width: 6, height: 6,
+                borderRadius: '50%',
+                background: '#C4F82A',
+                animation: 'pulse 1s ease-in-out infinite',
+              }} />
+              MOVING — {queueLen} waypoint{queueLen !== 1 ? 's' : ''} queued
+              <span style={{ color: '#888', marginLeft: 'auto' }}>ESC to stop</span>
+            </div>
+          )}
 
           {/* TCP Position */}
           <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
@@ -98,6 +131,14 @@ export default function HUD() {
           </div>
         </>
       )}
+
+      {/* Pulse animation for moving indicator */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
     </div>
   );
 }
