@@ -26,14 +26,14 @@ Joystick     -\
 Keyboard      -\
 Voice         --+--> MotionCommand --> Planner (IK) --> Safety Gate --> Executor --> Arm + Telemetry
 Autonomous PIN-/
-Agentic NL (bonus, not yet wired) -/   (would emit the SAME command schema, gated identically)
+Agentic NL   -/   (emits the SAME command schema, Zod-validated, gated identically)
 ```
 
 Every input source produces the same structured command
 (`lib/pipeline/types.ts`). Every command passes through the same
 deterministic safety check (`lib/safety/gate.ts`). The same executor
 (`lib/pipeline/executor.ts`) animates the arm. **Nothing reaches the arm
-without passing the gate** — including the (planned) AI agent path.
+without passing the gate** — including the AI agent path.
 
 **Why this matters:** if a voice command, an autonomous PIN routine, and a
 natural-language agent all flow through the identical validate-then-execute
@@ -58,7 +58,7 @@ flowchart TB
     A2["KeyboardHandler.tsx<br/>keydown to jog / touchKey / home"]
     A3["VoiceWidget.tsx<br/>speech to transcript"]
     A4["PinEntry.tsx<br/>text to enterPin"]
-    A5["(bonus, stub) Agent route<br/>NL to MotionCommand[]"]
+    A5["Agent route (bonus)<br/>NL → Zod → MotionCommand[]"]
   end
 
   subgraph TRANSLATE["Translation - pure functions, no side effects"]
@@ -70,7 +70,7 @@ flowchart TB
   A3 --> B3
   B3 -->|MotionCommand| C
   A4 -->|startPin| D["pin-controller.ts<br/>digit-by-digit orchestrator"]
-  A5 -.->|planned| C
+  A5 -->|MotionCommand| C
 
   subgraph PIPELINE["Shared pipeline - lib/pipeline/*"]
     C["executor.ts - execute(cmd)"]
@@ -130,10 +130,11 @@ many input methods exist.
 | 3D rendering | `three`, `@react-three/fiber`, `@react-three/drei` | Declarative scene graph over Three.js; `drei` gives orbit controls, grid, gizmo, HTML-in-3D for free |
 | Robot model | `urdf-loader` reading `public/arm.urdf` | Loads the provided URDF directly — joint names, meshes, and limits come from one source of truth |
 | State | `zustand` (`store/robot.ts`) | One small global store, no boilerplate reducers/providers; any component can read/write robot state |
-| Validation (agent layer) | `zod` | Planned use: validating LLM tool-call output into `MotionCommand[]` before it ever reaches the gate |
+| Validation (agent layer) | `zod` | Validates LLM structured output into `MotionCommand[]` via Zod discriminated unions before it ever reaches the gate |
 | Voice input | Web Speech API (`webkitSpeechRecognition`) | Zero-dependency, in-browser, no network call required for the baseline voice requirement |
 | Styling | Tailwind CSS v4 + CSS custom properties in `app/globals.css` | Utility classes for layout, design-token variables (`--primary`, `--destructive`, etc.) for anything themed |
-| Package manager | Bun (`bun.lock`) | Project convention per `AGENTS.md` |
+| LLM integration | `ai` (Vercel AI SDK), `@ai-sdk/google` | `generateObject()` with Zod schema validation for structured LLM output; Gemini model called server-side |
+| Package manager | Bun (`bun.lock`) and npm (`package-lock.json`) | Project convention per `AGENTS.md` |
 
 ---
 
@@ -143,7 +144,7 @@ many input methods exist.
 app/
   page.tsx                 Root layout: viewport + right rail + bottom console (grid layout)
   layout.tsx                Fonts (Space Grotesk, JetBrains Mono), page metadata
-  api/agent/route.ts         Server route for the agentic bonus layer — currently a 501 stub
+  api/agent/route.ts         Server route for the agentic bonus layer — Vercel AI SDK `generateObject()` with Gemini
 
 components/
   scene/
@@ -157,7 +158,7 @@ components/
     Joystick.tsx              XY pad + Z slider → continuous jog commands
     KeyboardHandler.tsx        Invisible component; global keydown → MotionCommand
     PinEntry.tsx               PIN text input + Run/Stop, drives lib/panel/pin-controller.ts
-    VoiceWidget.tsx            Mic toggle + live transcript log, drives lib/voice/*
+    VoiceWidget.tsx            Mic toggle + KEYWORD/AGENT mode switch, drives lib/voice/* and lib/agent/*
     ModeSwitch.tsx             Stub — planned manual/auto/voice/agent mode toggle (not implemented)
   telemetry/
     CommandConsole.tsx         Collapsible ALLOW/REJECT log (the shared audit trail)
@@ -185,7 +186,10 @@ lib/
     useVoice.ts                  React hook wrapping Web Speech API (used by VoiceWidget)
     capture.ts                   Unused — an earlier non-hook wrapper, superseded by useVoice.ts
   agent/
-    client.ts, prompt.ts, schema.ts   Stubs — planned agentic (LLM) layer, not yet implemented
+    client.ts                    Stub — earlier planned non-hook client, superseded by useAgent.ts
+    prompt.ts                    System prompts for LLM: robot description, command types, rules, examples
+    schema.ts                    Zod schemas: MotionCommandSchema, AgentResponseSchema, AgentSummarySchema
+    useAgent.ts                  React hook: 3-phase flow (parse → execute → summarize → speak via speechSynthesis)
 
 store/robot.ts                 The single Zustand store every module reads/writes
 
@@ -340,7 +344,7 @@ subscribed to the same slice.
 
 ---
 
-## 8. The five (planned) input sources, in detail
+## 8. The six input sources, in detail
 
 ### 8.1 Joystick — `components/controls/Joystick.tsx`
 An XY drag pad plus a vertical Z slider. While dragging, an 80 ms interval
@@ -398,18 +402,46 @@ reason — nothing is guessed. `lib/voice/capture.ts` is an earlier,
 non-hook implementation of the same idea and is currently dead code,
 superseded by `useVoice.ts`.
 
-### 8.5 Agentic natural language (bonus, +10%) — **not yet implemented**
-The scaffolding exists but is intentionally inert:
-- `app/api/agent/route.ts` returns `501 Not Implemented`.
-- `lib/agent/client.ts`, `prompt.ts`, `schema.ts` are comment-only stubs
-  describing the intended design: a server-side route (so the API key
-  never reaches the client) that prompts an LLM to emit `MotionCommand[]`,
-  validated through a Zod schema before ever reaching `execute()`.
+### 8.5 Agentic natural language (bonus, +10%) — `components/controls/VoiceWidget.tsx` (agent mode) + `lib/agent/*` + `app/api/agent/route.ts`
+The agentic layer is fully implemented and wired into the shared pipeline.
 
-The architectural point already stands even unimplemented: *when* this
-lands, it is designed to be a thin translator into the exact same
-`MotionCommand` contract as every other input, gated identically. It gets
-no privileged path to the arm.
+**Architecture:** a 3-phase flow — parse, execute, summarize — with the LLM
+called server-side so the API key never reaches the client.
+
+1. **Parse** — the user's spoken transcript is sent to `POST /api/agent`
+   (`action: 'parse'`). The server route calls `generateObject()` (Vercel AI
+   SDK) with a Gemini model, a system prompt describing the robot and all
+   available commands (`lib/agent/prompt.ts`), and a Zod schema
+   (`lib/agent/schema.ts`) that validates the output into
+   `{ commands: MotionCommand[], reply: string }`. Malformed output is
+   rejected by Zod before any command reaches the pipeline.
+
+2. **Execute** — `useAgent.ts` iterates over the validated `commands[]`,
+   calling `execute(cmd, 'agent')` for each one — the same function used by
+   joystick, keyboard, and voice. Each command passes through `plan()` →
+   `validate()` → `enqueueMotion()` identically. Results (success/reject +
+   reason) are collected.
+
+3. **Summarize** — the execution results are sent back to `POST /api/agent`
+   (`action: 'summarize'`). A second `generateObject()` call produces a
+   concise spoken reply that includes what succeeded and, critically, *why*
+   any commands failed (the gate's rejection reason, verbatim). The reply is
+   spoken aloud via `window.speechSynthesis`.
+
+**Ambiguity handling:** if the instruction is vague or ambiguous, the LLM
+returns an empty `commands[]` array and a clarifying question in `reply`.
+No commands are executed, and the question is spoken to the operator.
+
+**UI:** `VoiceWidget.tsx` has a pill-style `KEYWORD` / `AGENT` toggle.
+In keyword mode, transcripts go to the deterministic `parseVoiceCommand()`
+parser (§8.4). In agent mode, transcripts go to `useAgent.process()`. Both
+modes share the same mic button and Web Speech API hook (`useVoice`).
+Agent mode shows a chat-style message history (user + arm responses).
+
+**Key constraint preserved:** the agentic layer emits `MotionCommand[]` —
+the same contract as every other input source. It never sets raw joint
+angles. Every command passes the identical gate. An ungated agent path does
+not exist.
 
 ### 8.6 (Not one of the five) Dashboard joint sliders — `components/scene/HUD.tsx`
 A debug/inspection affordance for directly posing the arm by dragging
@@ -427,7 +459,7 @@ limitations.
 
 | File | Status |
 |---|---|
-| `app/api/agent/route.ts`, `lib/agent/{client,prompt,schema}.ts` | Stubs only — agentic bonus layer not implemented |
+| `lib/agent/client.ts` | Stub — earlier planned non-hook client, superseded by `useAgent.ts` |
 | `components/controls/ModeSwitch.tsx` | Stub, not rendered in `app/page.tsx` |
 | `components/scene/ReachEnvelope.tsx` | Stub, not rendered in `Arm.tsx`/`Canvas.tsx` |
 | `components/telemetry/JointBars.tsx`, `components/telemetry/Readout.tsx` | Stubs, superseded by the actually-used `components/ui/JointBar.tsx` and `components/ui/StatusLED.tsx` |
@@ -436,8 +468,8 @@ limitations.
 | `store/robot.ts` → `safetyFlag` | Declared, initialized, never written or read — currently inert |
 | `components/scene/HUD.tsx` joint sliders | Bypasses the safety gate by design (§2, §8.6) — the only path that does |
 
-None of these affect the five graded, wired input paths (joystick,
-keyboard, voice, autonomous PIN) or the gate/planner/executor/IK core,
+None of these affect the six wired input paths (joystick,
+keyboard, voice, autonomous PIN, agentic NL) or the gate/planner/executor/IK core,
 which are fully implemented and exercised end to end.
 
 ---
@@ -577,7 +609,7 @@ flowchart TD
   PinVerifier -.reads.-> Store
   Joystick -.writes via execute.-> Store
   PinEntry -.writes via pin-controller.-> Store
-  VoiceWidget -.writes via execute/pin-controller.-> Store
+  VoiceWidget -.writes via execute/pin-controller/useAgent.-> Store
   Bottom -.reads.-> Store
   KH -.writes via execute.-> Store
 ```
@@ -635,8 +667,8 @@ command originated (including a future agentic layer).
 | Safety gate as a first-class, reused module | It is the center of the system, not a wrapper added at the end. The brief explicitly marks down an "ungated agent" — this design makes that impossible by construction | Adds one more hop of latency to every single command, even simple jogs |
 | Numerical IK: base yaw + planar decomposition | The arm's axes split cleanly — J1/J4/J6 are Z-axis, J2/J3/J5/J7 are Y-axis. Holding the two rolls at zero reduces the problem to yaw + a 4-link planar chain: fast, stable, explainable | Relies on this specific axis layout; a general solver over all 7 joints would be needed if the layout changed |
 | Control all 7 actuated joints (including stylus_pitch) | The provided URDF makes the stylus pitch an actuated joint, not fixed. Using it keeps the nib pointing straight down at every key touch automatically | Departs from the brief's literal "6-DOF" wording — stated here as a deliberate, documented choice, not a miss |
-| Deterministic voice kept separate from the agentic layer | The required baseline (keyword to motion) must work with zero dependency on any model or network, and is judged on its own | Two voice code paths conceptually possible long-term, but only the deterministic one is built; the agentic one is still a stub |
-| Agent will emit the same schema, gated identically | The LLM would never produce raw joint angles — only validated high-level commands, Zod-checked before `execute()` | Adds latency and API cost once built; isolated entirely to the optional bonus path; currently not implemented, so this is a design commitment rather than a demonstrated fact |
+| Deterministic voice kept separate from the agentic layer | The required baseline (keyword to motion) must work with zero dependency on any model or network, and is judged on its own | Two voice code paths coexist in the same widget (KEYWORD/AGENT toggle) but are independent — disabling the LLM leaves the deterministic path fully operational |
+| Agent emits the same schema, gated identically | The LLM never produces raw joint angles — only validated high-level commands, Zod-checked before `execute()` | Adds latency (~1–2s per LLM call) and API cost; isolated entirely to the optional bonus path |
 | Kinematic touch check (no physics engine) | The brief defines success as the tip reaching within 5mm of a key — a physics simulation adds engineering risk with no scored value | No contact-force modeling; explicitly out of scope by design |
 | Single Zustand store, no per-feature state | Every surface (3D scene, HUD, console, PIN overlay) renders off one source of truth, so "the same telemetry everywhere" is structurally true, not just visually similar | Any bug in `setJoints()`/`fk()` propagates to every consumer at once — there is no isolation between telemetry and control state |
 
@@ -653,6 +685,6 @@ command originated (including a future agentic layer).
 | Autonomous PIN Entry (20%, highest weight) | `lib/panel/pin-controller.ts` — `enterPin` compiled to a sequence of gated `touchKey` commands, each with a measured mm-tolerance check |
 | Electrical Schematic (5%) | Separate document — `docs/schematic/README.md` — pin map, power domains, PCA9685 reasoning |
 | System Architecture & Concept (15%, this document) | This pipeline description, the diagrams, the rationale table, and the known-gaps list (§9) |
-| Agentic bonus (+10%) | Scaffolded (`app/api/agent/route.ts`, `lib/agent/*`), designed to emit the same validated commands gated identically — **not yet implemented**, stated plainly rather than implied as done |
+| Agentic bonus (+10%) | `app/api/agent/route.ts` (server-side Gemini via Vercel AI SDK) + `lib/agent/{schema,prompt,useAgent}.ts` (Zod validation, system prompts, 3-phase client hook) + `VoiceWidget.tsx` KEYWORD/AGENT toggle — **fully implemented**, emitting the same validated commands, gated identically, with spoken natural-language feedback |
 
 ---
