@@ -2,6 +2,7 @@
 
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { KEYS } from '@/lib/robot/constants';
 import { useRobotStore } from '@/store/robot';
 import type { Mesh } from 'three';
@@ -69,25 +70,45 @@ export function Keys() {
         <meshStandardMaterial color="#1a1a2e" metalness={0.6} roughness={0.3} />
       </mesh>
 
-      {/* Key caps */}
+      {/* Key caps with labels */}
       {keyEntries.map(([id, pos], i) => {
         const color = COLORS[id] ?? '#ffffff';
         return (
-          <mesh
-            key={id}
-            ref={(el) => { keyRefs.current[i] = el; }}
-            position={[pos.x, pos.y, pos.z + CAP_H / 2]}
-            name={`key-${id}`}
-          >
-            <boxGeometry args={[CAP_W, CAP_D, CAP_H]} />
-            <meshStandardMaterial
-              color={color}
-              emissive={color}
-              emissiveIntensity={0.4}
-              metalness={0.2}
-              roughness={0.5}
-            />
-          </mesh>
+          <group key={id}>
+            <mesh
+              ref={(el) => { keyRefs.current[i] = el; }}
+              position={[pos.x, pos.y, pos.z + CAP_H / 2]}
+              name={`key-${id}`}
+            >
+              <boxGeometry args={[CAP_W, CAP_D, CAP_H]} />
+              <meshStandardMaterial
+                color={color}
+                emissive={color}
+                emissiveIntensity={0.4}
+                metalness={0.2}
+                roughness={0.5}
+              />
+            </mesh>
+
+            {/* Number label — DOM-based, zero WebGL cost */}
+            <Html
+              position={[pos.x, pos.y, pos.z + CAP_H + 0.002]}
+              center
+              distanceFactor={0.8}
+              style={{
+                color: '#fff',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontWeight: 800,
+                fontSize: 13,
+                textShadow: `0 0 4px ${color}, 0 0 8px rgba(0,0,0,0.9)`,
+                userSelect: 'none',
+                pointerEvents: 'none',
+                lineHeight: 1,
+              }}
+            >
+              {id}
+            </Html>
+          </group>
         );
       })}
     </group>
