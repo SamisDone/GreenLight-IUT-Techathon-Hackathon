@@ -19,6 +19,7 @@ export function plan(cmd: MotionCommand, currentJoints: number[]): PoseWaypoint[
       const key = KEYS[cmd.keyId];
       if (!key) return [];
       return [
+        { kind: 'cartesian', target: { x: key.x, y: key.y, z: 0.40 },       keepVertical: true, label: `pre-approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `touch key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `dwell key-${cmd.keyId}` },
