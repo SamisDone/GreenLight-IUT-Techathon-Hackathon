@@ -19,20 +19,30 @@ export function plan(cmd: MotionCommand, currentJoints: number[]): PoseWaypoint[
       const key = KEYS[cmd.keyId];
       if (!key) return [];
 
-      // Prepare: tilt arm forward 60° (split across J2/J3/J5) while flipping
-      // stylus down. J7 can't reach π alone (limit ±120°), so we distribute.
-      const j1 = Math.atan2(key.y, key.x);
-      const TILT = 0.35;                          // ~20° per pitch joint
-      const j7 = Math.PI - 3 * TILT;              // ≈2.09 rad, within ±2.0944 limit
+      // Check if stylus is already pointing down (cumulative pitch ≈ π).
+      // If so, skip the prepare + pre-approach — arm is already in working area.
+      const cumAngle = currentJoints[1] + currentJoints[2] + currentJoints[4] + currentJoints[6];
+      const stylusDown = cumAngle > 2.0;  // > ~115° total tilt = stylus mostly down
 
-      return [
-        { kind: 'joint', joints: [j1, TILT, TILT, 0, TILT, 0, j7],           label: `prepare key-${cmd.keyId}` },
-        { kind: 'cartesian', target: { x: key.x, y: key.y, z: 0.40 },       keepVertical: true, label: `pre-approach key-${cmd.keyId}` },
+      const waypoints: PoseWaypoint[] = [];
+
+      if (!stylusDown) {
+        // Prepare: tilt arm forward 60° and flip stylus down
+        const j1 = Math.atan2(key.y, key.x);
+        const TILT = 0.35;
+        const j7 = Math.PI - 3 * TILT;
+        waypoints.push({ kind: 'joint', joints: [j1, TILT, TILT, 0, TILT, 0, j7], label: `prepare key-${cmd.keyId}` });
+        waypoints.push({ kind: 'cartesian', target: { x: key.x, y: key.y, z: 0.40 }, keepVertical: true, label: `pre-approach key-${cmd.keyId}` });
+      }
+
+      waypoints.push(
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `touch key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `dwell key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `retract key-${cmd.keyId}` },
-      ];
+      );
+
+      return waypoints;
     }
 
     case 'enterPin':
