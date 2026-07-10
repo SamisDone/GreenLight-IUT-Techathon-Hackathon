@@ -41,7 +41,7 @@ export function Keys() {
   // Single useFrame drives all key press animations
   useFrame((_, delta) => {
     const { tcp } = useRobotStore.getState();
-    const speed = 12;
+    const speed = 25;
 
     keyEntries.forEach(([, pos], i) => {
       const mesh = keyRefs.current[i];

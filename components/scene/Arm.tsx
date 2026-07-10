@@ -78,7 +78,7 @@ export function Arm() {
           }
         }
         // Minimum duration to prevent instant snaps on tiny moves
-        motionDurationRef.current = Math.max(maxTime, 0.05);
+        motionDurationRef.current = Math.max(maxTime, 0.20);
       }
 
       // Advance time

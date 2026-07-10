@@ -21,6 +21,7 @@ export function plan(cmd: MotionCommand, currentJoints: number[]): PoseWaypoint[
       return [
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `approach key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `touch key-${cmd.keyId}` },
+        { kind: 'cartesian', target: { x: key.x, y: key.y, z: TOUCH_Z },   keepVertical: true, label: `dwell key-${cmd.keyId}` },
         { kind: 'cartesian', target: { x: key.x, y: key.y, z: APPROACH_Z }, keepVertical: true, label: `retract key-${cmd.keyId}` },
       ];
     }
