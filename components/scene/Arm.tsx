@@ -77,8 +77,8 @@ export function Arm() {
             maxTime = Math.max(maxTime, travel / JOINTS[i].vel);
           }
         }
-        // Minimum duration to prevent instant snaps on tiny moves
-        motionDurationRef.current = Math.max(maxTime, 0.20);
+        // Minimum duration: short for tiny jog moves, longer for big waypoint moves
+        motionDurationRef.current = Math.max(maxTime, maxTime < 0.08 ? 0.06 : 0.20);
       }
 
       // Advance time
