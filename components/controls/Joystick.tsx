@@ -140,8 +140,8 @@ export default function Joystick() {
   return (
     <div style={{
       position: 'absolute',
-      bottom: 12,
-      left: 12,
+      top: 12,
+      right: 12,
       zIndex: 10,
       display: 'flex',
       gap: 10,
