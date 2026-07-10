@@ -27,7 +27,7 @@ export default function PinEntry() {
   }, [handleRun]);
 
   return (
-    <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="panel">
       <div className="panel-header">
         <span>AUTONOMOUS PIN</span>
       </div>
