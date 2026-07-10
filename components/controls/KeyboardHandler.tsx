@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { execute } from '@/lib/pipeline/executor';
+import { useRobotStore } from '@/store/robot';
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
@@ -52,9 +53,20 @@ export default function KeyboardHandler() {
           execute({ kind: 'jog', axis: 'z', delta: -0.01 }, 'keyboard');
           break;
 
-        // Home key → home position
+        // Escape → emergency stop (clear motion queue)
+        case 'Escape':
+          e.preventDefault();
+          useRobotStore.getState().clearQueue();
+          useRobotStore.getState().addLog({
+            source: 'keyboard', kind: 'stop',
+            result: 'ALLOW', timestamp: Date.now(),
+          });
+          break;
+
+        // Home key → clear queue + go home
         case 'Home':
           e.preventDefault();
+          useRobotStore.getState().clearQueue();
           execute({ kind: 'home' }, 'keyboard');
           break;
       }
