@@ -1,2 +1,274 @@
-// GUI Joystick — 2D drag pad emitting jog commands through the shared pipeline
 'use client';
+
+import { useRef, useCallback, useEffect, useState } from 'react';
+import { execute } from '@/lib/pipeline/executor';
+
+const PAD_SIZE = 120;
+const KNOB_SIZE = 40;
+const DEADZONE = 0.1;
+const JOG_STEP = 0.008;       // meters per tick
+const JOG_Z_STEP = 0.006;
+const TICK_MS = 80;            // ~12Hz continuous jog
+
+export default function Joystick() {
+  // ── XY Pad state ──
+  const padRef = useRef<HTMLDivElement>(null);
+  const [knobX, setKnobX] = useState(0);
+  const [knobY, setKnobY] = useState(0);
+  const draggingXY = useRef(false);
+  const displacement = useRef({ x: 0, y: 0 });
+  const intervalXY = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Z Slider state ──
+  const zRef = useRef<HTMLDivElement>(null);
+  const [knobZ, setKnobZ] = useState(0);
+  const draggingZ = useRef(false);
+  const displacementZ = useRef(0);
+  const intervalZ = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── XY Pad handlers ──
+  const startXYJog = useCallback(() => {
+    if (intervalXY.current) return;
+    intervalXY.current = setInterval(() => {
+      const { x, y } = displacement.current;
+      if (Math.abs(x) > DEADZONE) {
+        execute({ kind: 'jog', axis: 'x', delta: x * JOG_STEP }, 'joystick');
+      }
+      if (Math.abs(y) > DEADZONE) {
+        execute({ kind: 'jog', axis: 'y', delta: -y * JOG_STEP }, 'joystick');
+      }
+    }, TICK_MS);
+  }, []);
+
+  const stopXYJog = useCallback(() => {
+    if (intervalXY.current) {
+      clearInterval(intervalXY.current);
+      intervalXY.current = null;
+    }
+  }, []);
+
+  const onXYDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    draggingXY.current = true;
+    startXYJog();
+  }, [startXYJog]);
+
+  const onXYMove = useCallback((e: React.PointerEvent) => {
+    if (!draggingXY.current || !padRef.current) return;
+    const rect = padRef.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const maxR = PAD_SIZE / 2 - KNOB_SIZE / 2;
+
+    let dx = e.clientX - cx;
+    let dy = e.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxR) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+
+    setKnobX(dx);
+    setKnobY(dy);
+    displacement.current = { x: dx / maxR, y: dy / maxR };
+  }, []);
+
+  const onXYUp = useCallback(() => {
+    draggingXY.current = false;
+    setKnobX(0);
+    setKnobY(0);
+    displacement.current = { x: 0, y: 0 };
+    stopXYJog();
+  }, [stopXYJog]);
+
+  // ── Z Slider handlers ──
+  const startZJog = useCallback(() => {
+    if (intervalZ.current) return;
+    intervalZ.current = setInterval(() => {
+      const z = displacementZ.current;
+      if (Math.abs(z) > DEADZONE) {
+        execute({ kind: 'jog', axis: 'z', delta: -z * JOG_Z_STEP }, 'joystick');
+      }
+    }, TICK_MS);
+  }, []);
+
+  const stopZJog = useCallback(() => {
+    if (intervalZ.current) {
+      clearInterval(intervalZ.current);
+      intervalZ.current = null;
+    }
+  }, []);
+
+  const onZDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    draggingZ.current = true;
+    startZJog();
+  }, [startZJog]);
+
+  const onZMove = useCallback((e: React.PointerEvent) => {
+    if (!draggingZ.current || !zRef.current) return;
+    const rect = zRef.current.getBoundingClientRect();
+    const cy = rect.top + rect.height / 2;
+    const maxD = (PAD_SIZE - KNOB_SIZE) / 2;
+
+    let dy = e.clientY - cy;
+    dy = Math.max(-maxD, Math.min(maxD, dy));
+
+    setKnobZ(dy);
+    displacementZ.current = dy / maxD;
+  }, []);
+
+  const onZUp = useCallback(() => {
+    draggingZ.current = false;
+    setKnobZ(0);
+    displacementZ.current = 0;
+    stopZJog();
+  }, [stopZJog]);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      stopXYJog();
+      stopZJog();
+    };
+  }, [stopXYJog, stopZJog]);
+
+  const isActiveXY = draggingXY.current && (Math.abs(displacement.current.x) > DEADZONE || Math.abs(displacement.current.y) > DEADZONE);
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+      zIndex: 10,
+      display: 'flex',
+      gap: 10,
+      alignItems: 'flex-end',
+    }}>
+      {/* XY Pad */}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          color: '#5B626B',
+          fontSize: 9,
+          fontFamily: '"JetBrains Mono", monospace',
+          fontWeight: 700,
+          letterSpacing: 1,
+          marginBottom: 4,
+        }}>
+          XY JOG
+        </div>
+        <div
+          ref={padRef}
+          onPointerDown={onXYDown}
+          onPointerMove={onXYMove}
+          onPointerUp={onXYUp}
+          onPointerCancel={onXYUp}
+          style={{
+            width: PAD_SIZE,
+            height: PAD_SIZE,
+            borderRadius: '50%',
+            background: 'rgba(18, 20, 23, 0.92)',
+            border: '1px solid rgba(196, 248, 42, 0.15)',
+            position: 'relative',
+            cursor: 'grab',
+            touchAction: 'none',
+            boxShadow: isActiveXY ? '0 0 12px rgba(196, 248, 42, 0.15)' : 'none',
+          }}
+        >
+          {/* Crosshair */}
+          <div style={{
+            position: 'absolute', top: '50%', left: 8, right: 8,
+            height: 1, background: '#262A2F', transform: 'translateY(-0.5px)',
+          }} />
+          <div style={{
+            position: 'absolute', left: '50%', top: 8, bottom: 8,
+            width: 1, background: '#262A2F', transform: 'translateX(-0.5px)',
+          }} />
+
+          {/* Knob */}
+          <div style={{
+            position: 'absolute',
+            width: KNOB_SIZE,
+            height: KNOB_SIZE,
+            borderRadius: '50%',
+            background: draggingXY.current ? '#C4F82A' : '#3a3f47',
+            border: `2px solid ${draggingXY.current ? '#C4F82A' : '#5B626B'}`,
+            left: '50%',
+            top: '50%',
+            transform: `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`,
+            transition: draggingXY.current ? 'none' : 'transform 0.15s ease-out',
+            boxShadow: draggingXY.current ? '0 0 10px rgba(196, 248, 42, 0.4)' : 'none',
+            cursor: draggingXY.current ? 'grabbing' : 'grab',
+          }} />
+        </div>
+      </div>
+
+      {/* Z Slider */}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          color: '#5B626B',
+          fontSize: 9,
+          fontFamily: '"JetBrains Mono", monospace',
+          fontWeight: 700,
+          letterSpacing: 1,
+          marginBottom: 4,
+        }}>
+          Z
+        </div>
+        <div
+          ref={zRef}
+          onPointerDown={onZDown}
+          onPointerMove={onZMove}
+          onPointerUp={onZUp}
+          onPointerCancel={onZUp}
+          style={{
+            width: 36,
+            height: PAD_SIZE,
+            borderRadius: 18,
+            background: 'rgba(18, 20, 23, 0.92)',
+            border: '1px solid rgba(196, 248, 42, 0.15)',
+            position: 'relative',
+            cursor: 'grab',
+            touchAction: 'none',
+          }}
+        >
+          {/* Center line */}
+          <div style={{
+            position: 'absolute', top: '50%', left: 6, right: 6,
+            height: 1, background: '#262A2F', transform: 'translateY(-0.5px)',
+          }} />
+
+          {/* Up/Down labels */}
+          <div style={{
+            position: 'absolute', top: 4, left: 0, right: 0,
+            textAlign: 'center', fontSize: 8, color: '#5B626B',
+            fontFamily: '"JetBrains Mono", monospace', pointerEvents: 'none',
+          }}>▲</div>
+          <div style={{
+            position: 'absolute', bottom: 4, left: 0, right: 0,
+            textAlign: 'center', fontSize: 8, color: '#5B626B',
+            fontFamily: '"JetBrains Mono", monospace', pointerEvents: 'none',
+          }}>▼</div>
+
+          {/* Z Knob */}
+          <div style={{
+            position: 'absolute',
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: draggingZ.current ? '#C4F82A' : '#3a3f47',
+            border: `2px solid ${draggingZ.current ? '#C4F82A' : '#5B626B'}`,
+            left: '50%',
+            top: '50%',
+            transform: `translate(-50%, calc(-50% + ${knobZ}px))`,
+            transition: draggingZ.current ? 'none' : 'transform 0.15s ease-out',
+            boxShadow: draggingZ.current ? '0 0 10px rgba(196, 248, 42, 0.4)' : 'none',
+            cursor: draggingZ.current ? 'grabbing' : 'grab',
+          }} />
+        </div>
+      </div>
+    </div>
+  );
+}
